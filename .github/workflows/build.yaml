@@ -20,11 +20,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      # ── 2. System dependencies ───────────────────────────────────────────────
       - name: 🔧 Install Linux build dependencies
         run: |
           sudo apt-get update -qq
@@ -34,7 +32,6 @@ jobs:
             libglib2.0-dev libpango1.0-dev libatk1.0-dev \
             libgdk-pixbuf2.0-dev libcairo2-dev
 
-      # ── 3. Flutter setup ─────────────────────────────────────────────────────
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -48,28 +45,27 @@ jobs:
       - name: 📦 Get dependencies
         run: flutter pub get
 
-      # ── 4. Code quality ──────────────────────────────────────────────────────
+      - name: 🔧 Generate correct Linux platform files
+        run: |
+          flutter create --platforms=linux --project-name=linx /tmp/linx_template
+          rm -rf linux/
+          cp -r /tmp/linx_template/linux/ linux/
+
       - name: 🔍 Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
 
-      # ── 5. Build ─────────────────────────────────────────────────────────────
       - name: 🏗️ Build Linux release
-        run: flutter build linux --release --verbose
+        run: flutter build linux --release
 
-      # ── 6. Package ───────────────────────────────────────────────────────────
       - name: 📦 Package as tar.gz
         run: |
           cd build/linux/x64/release/bundle
           tar -czf "$GITHUB_WORKSPACE/linx-linux-x64.tar.gz" .
-          echo "✅ Package created: linx-linux-x64.tar.gz"
 
       - name: 📄 Generate checksums
-        run: |
-          sha256sum linx-linux-x64.tar.gz > linx-linux-x64.tar.gz.sha256
-          cat linx-linux-x64.tar.gz.sha256
+        run: sha256sum linx-linux-x64.tar.gz > linx-linux-x64.tar.gz.sha256
 
-      # ── 7. Upload build artifact ─────────────────────────────────────────────
       - name: ⬆️ Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -79,7 +75,6 @@ jobs:
             linx-linux-x64.tar.gz.sha256
           retention-days: 14
 
-      # ── 8. Create GitHub Release (on tag push) ───────────────────────────────
       - name: 🎉 Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -96,24 +91,20 @@ jobs:
 
             ### 🚀 Installation
             ```bash
-            # Download and extract
-            tar -xzf linx-linux-x64.tar.gz
+            # Install GTK runtime (Ubuntu/Debian)
+            sudo apt install libgtk-3-0
 
-            # Run the app
+            # Extract and run
+            tar -xzf linx-linux-x64.tar.gz
             ./linx
             ```
 
             ### ✨ Features
-            - 📚 Subject management — add, edit, delete subjects
-            - 📝 Test score tracking per subject
+            - 📚 Subject management
+            - 📝 Test score tracking
             - 📊 Performance analytics with charts
-            - 🏠 Dashboard overview with stats
-            - 💾 Fully offline — data stored locally in SQLite
+            - 🏠 Dashboard overview
+            - 💾 Fully offline — SQLite local storage
             - 🌙 Dark / Light theme toggle
 
-            ### 💻 Requirements
-            - Linux x64 (Ubuntu 20.04+ / Debian 11+ / Fedora 34+)
-            - GTK 3.0 runtime (`sudo apt install libgtk-3-0`)
-
-            ---
             Built with Flutter 🐦 + Material 3
